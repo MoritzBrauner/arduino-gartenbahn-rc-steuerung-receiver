@@ -1,219 +1,71 @@
 #include <nRF24L01.h>
 #include <RF24.h>
 
+//Debug and Safe Mode
+const bool SAFE_MODE = true; 
+const bool DEBUG = true; 
+
+//Default Values
+#define DEFAULT_ANALOG_VALUE 512 
+#define DEFAULT_DIGITAL_VALUE 0
+#define STANDARD_STICK_TOLERANCE 50 
+
 //Pin Declarations
 #define PIN_CE 7
 #define PIN_CSN 8
 
-/* #define PIN_FORWARD 2
+#define PIN_FORWARD 2
 #define PIN_BACKWARD 4
 #define PIN_PWM 3 
 
 #define PIN_HORN 1000
 
-#define PIN_HORN 13
-#define PIN_LIGHTS 12
-#define PIN_LZ1  11
-#define PIN_PLACEHOLDER1 10
-#define PIN_PLACEHOLDER2 9
-#define PIN_PLACEHOLDER3 15 */
+#define PIN_LIGHT_FR 5
+#define PIN_LIGHT_FL 6
+#define PIN_LIGHT_FT 7
 
-/* class Stick {
-  public: 
-    Stick(int lowerLimit, int upperLimit, int assignedPin, int boundryTolerance):
-      lowerLimit(lowerLimit),
-      upperLimit(upperLimit), 
-      assignedPin(assignedPin),
-      boundryTolerance(boundryTolerance),
-      currentPosition((lowerLimit + upperLimit) / 2)
-    {
-      /* this->boundryTolerance = boundryTolerance;  
-      this->lowerLimit = lowerLimit; 
-      this->upperLimit = upperLimit;
-      this->assignedPin = assignedPin;  
-      this->currentPosition = (lowerLimit + upperLimit) / 2; 
-    }
+#define PIN_LIGHT_BR 8
+#define PIN_LIGHT_BL 9
+#define PIN_LIGHT_BT 10
 
-    void update(int &value) {
-      if (value >= lowerLimit && value <= upperLimit) {
-        this->currentPosition = value; 
-      }
-    }
+#define PIN_LIGHT_INTERIOR 
 
-    virtual void write() = 0; 
+//Global functions 
+void serialPrint(int number, int places);
+void writeMotor(uint8_t ly, bool direction); 
+void writeHorn(bool active); 
+void writeExteriorLights(bool direction, bool lightsActive, bool rearLightsActive, bool lz1Active);
+void writeInteriorLights(bool active);   
 
-    int assignedPin; 
-    int boundryTolerance; 
-    int currentPosition;  
-    int lowerLimit; 
-    int upperLimit; 
-};
+//Global Variables 
+bool goingForward = true;
+bool lxInputIsIgnored = false; 
+bool isStopped = true; 
 
+bool rxlIsLocked = false; 
 
-class PWMStick: public Stick {
-  public: 
-    PWMStick(int lowerLimit, int upperLimit, int assignedPWMPin, int forwardPin, int backWardPin, int boundryTolerance = 50): Stick(lowerLimit, upperLimit, assignedPWMPin, boundryTolerance) { 
-      this->forwardPin = forwardPin; 
-      this->backwardPin = backWardPin;
-      this->direction = true;  
-    }
-
-    void setDirectionSafe(bool dir) {
-      if (currentPosition != 0) return; 
-      this->direction = dir; 
-    }
-
-    void write() override {
-      if (currentPosition == 0) {
-        if(direction) { 
-          writeForward(); 
-        } else {
-          writeBackward(); 
-        }
-      } else {
-        writeMappedPWM(); 
-      }
-      Serial.print("   dir: "); 
-      Serial.print(direction); 
-      Serial.print("   current_val: ");
-      Serial.print(currentPosition);  
-    }
-    
-    int forwardPin; 
-    int backwardPin;
-
-  private:
-    
-    void writeMappedPWM() {
-      int pwmSignal = map(currentPosition, 0, 1024, 0, 255); 
-      //analogWrite(assignedPin, pwmSignal);
-    } 
-
-    void writeForward() { 
-      //digitalWrite(backwardPin, LOW); 
-      //digitalWrite(forwardPin, HIGH); 
-    }
-
-    void writeBackward() { 
-      //digitalWrite(forwardPin, LOW); 
-      //digitalWrite(backwardPin, HIGH);
-    }
-
-    bool direction; 
-};
-
-class BinaryStick: public Stick {
-  public: 
-    BinaryStick(int lowerLimit, int upperLimit, int assignedPin, int boundryTolerance = 50): Stick(lowerLimit, upperLimit, assignedPin, boundryTolerance) {
-      this->isActive = false;  
-    }
-
-    void write() override {
-      //digitalWrite(assignedPin, isActive);
-      Serial.print("   isActive: ");
-      Serial.print(isActive);
-    }
-
-    void update(int &value) {
-      Stick::update(value);
-      if (currentPosition < (lowerLimit + boundryTolerance)) {
-        isActive = false; 
-      } else if (currentPosition > (upperLimit - boundryTolerance)) {
-        isActive = true; 
-      }
-    }
-    bool isActive; 
-};
-
-class ToggleStick: public BinaryStick {
-  public: 
-    ToggleStick(int lowerLimit, int upperLimit, int assignedPin, int boundryTolerance = 50): BinaryStick(lowerLimit, upperLimit, assignedPin, boundryTolerance) {
-      this->isActive = false;  
-      this -> isLocked = false; 
-    }
-
-    void update(int &value) {
-      Stick::update(value);
-      if (currentPosition < (lowerLimit + boundryTolerance)) {
-        toggleActive();
-        isLocked = true;  
-      } else if (isLocked && currentPosition > (upperLimit - boundryTolerance)) {
-        toggleActive(); 
-        isLocked = false; 
-      }
-      Serial.print("   toggleStick value: ");
-      Serial.print(value); 
-      Serial.print("   isActive: ");
-      Serial.print(isActive);  
-    }
-
-    void write() override {
-      if (!isLocked) {
-        //digitalWrite(assignedPin, isActive);
-        isLocked = true; 
-      }
-    }
-
-    bool isLocked;
-
-  private: 
-    void toggleActive() {
-      isActive = !isActive; 
-    }
-};
-
-class Switch {
-  public:
-    Switch(int assignedPin) {
-      this->assignedPin = assignedPin; 
-      this->active = false; 
-    }
-
-    void update(bool value) {
-      this->active = value; 
-    }
-
-    void write() {
-      //digitalWrite(assignedPin, active); 
-    }
-
-  private: 
-    int assignedPin; 
-    bool active; 
-};
- */
-
-
-
+//Radio setup 
 RF24 radio(PIN_CE, PIN_CSN); // CE, CSN
 const byte address[6] = "00100";
 
-//Datenpaket 
+//Data Package 
 struct Data_Package {
-  int lx = 0;
-  int ly = 0; 
-  bool lz = 0; 
+  int lx = DEFAULT_ANALOG_VALUE;
+  int ly = DEFAULT_ANALOG_VALUE; 
+  bool lz = DEFAULT_DIGITAL_VALUE; 
 
-  int rx = 0; 
-  int ry = 0; 
-  bool rz = 0; 
+  int rx = DEFAULT_ANALOG_VALUE; 
+  int ry = DEFAULT_ANALOG_VALUE; 
+  bool rz = DEFAULT_DIGITAL_VALUE; 
 };
-Data_Package data;
+Data_Package data; 
 
-const int standardStickTolerance = 50; 
 
-/* BinaryStick lx(0, 1024, 1000, standardStickTolerance); 
-PWMStick ly(0, 1024, PIN_PWM, PIN_FORWARD, PIN_BACKWARD, standardStickTolerance); 
-Switch lz(PIN_HORN); 
-ToggleStick ryu(512, 1024, PIN_LIGHTS, standardStickTolerance);
-ToggleStick ryl(0, 1024, PIN_LZ1, standardStickTolerance); 
-ToggleStick rxl(512, 1024, PIN_PLACEHOLDER1, standardStickTolerance); 
-ToggleStick rxr(512, 1024, PIN_PLACEHOLDER2, standardStickTolerance);
-Switch rz(PIN_PLACEHOLDER3); */
 
 void setup() {
   Serial.begin(9600);
-  Serial.println("Setup - Start");
+  Serial.println("Program: RC Receiver");
+  Serial.println("Setup - Start");  
 
   //Initialize Radio Communication
   bool init_status = radio.begin();
@@ -223,52 +75,167 @@ void setup() {
   radio.openReadingPipe(0, address);
   radio.setPALevel(RF24_PA_MAX);
   radio.startListening();
+
+  pinMode(PIN_PWM, OUTPUT); 
+  pinMode(PIN_FORWARD, OUTPUT); 
+  pinMode(PIN_BACKWARD, OUTPUT); 
+
+  pinMode(PIN_HORN, OUTPUT); 
   
   Serial.println("Setup - End");
 }
 
 void loop() {
-  Serial.println("hello");
-  /* 
+   
+ /*  
   LX: Richtung V> R< 
   LY: Fahrregler 
   LZ: Horn 
 
-  RX: Umschalten Hecklichter < / FZ1 (1 weiße Leuchte auf Pufferhöhe) > 
-  RY: Kabinenbeleuchtung / Licht an/aus 
-  RZ: Hauptschalter?  / Rangierschalter (langsamere V-max)?
-  */
-  /*Serial.println("Start");
+  RX: Kabinenbeleuchtung  < / FZ1 (1 weiße Leuchte auf Pufferhöhe) > 
+  RY: Umschalten Hecklichter / Licht an/aus 
+  RZ: Hauptschalter?  / Rangierschalter (langsamere V-max)? 
+*/
 
-  //Check radio availability
+  //Check radio availability, read if available, else stop
   if (radio.available()) {
     radio.read(&data, sizeof(Data_Package));
+  } else {
+    data.lx = DEFAULT_ANALOG_VALUE; 
+    data.ly = DEFAULT_ANALOG_VALUE; 
+    data.lz = DEFAULT_DIGITAL_VALUE; 
+    data.rx = DEFAULT_ANALOG_VALUE; 
+    data.ry = DEFAULT_ANALOG_VALUE; 
+    data.rz = DEFAULT_DIGITAL_VALUE; 
   }
 
-  lx.update(data.lx); 
-  ly.update(data.ly); 
-  lz.update(data.lz);
-  rxl.update(data.rx); 
-  rxr.update(data.rx); 
-  ryl.update(data.ry); 
-  ryu.update(data.ry);
-  rz.update(data.rz);  
+  //Stick and Switch Handling 
+  //LY
+  uint8_t pwm = map(data.ly, 0, 1024, 0, 255);
+    
 
-  lx.write(); 
-  Serial.print(" | ");
-  ly.write(); 
-  Serial.print(" | ");
-  lz.write(); 
-  Serial.print(" | ");
+  //LX
+  isStopped = pwm == 0;
+  if (isStopped) {
+    if (data.lx < 250) {
+      goingForward = true; 
+      lxInputIsIgnored = true; 
+    } else if (data.lx > 1024 - 250) {
+      goingForward = false; 
+      lxInputIsIgnored = true;
+    } else {
+      lxInputIsIgnored = false; 
+    } 
+  }
+
+
+  //LZ
+  bool hornActive = data.lz;  
+
+  //RX 
+
+  //RY
+
+  //RZ
+
+
+  //Pin Writing - only if Safe Mode is disabled  
+  if (!SAFE_MODE) {
+    writeMotor(pwm, goingForward); 
+    writeHorn(hornActive); 
+  }
   
-  rxl.write();
-  Serial.print(" | ");
-  rxr.write();
-  Serial.print(" | ");
-  ryu.write();
-  Serial.print(" | ");
-  ryl.write();
-  Serial.print(" | ");
-  rz.write(); 
-  Serial.print(" | "); */
+  //DEBUG Prints: 
+  if (DEBUG) {
+    //DEBUG LX: 
+    /*Serial.print("lx: "); 
+    serialPrint(data.lx, 4); 
+    Serial.print("   |   isStopped: "); 
+    Serial.print(isStopped);
+    Serial.print("   |   goingForward: "); 
+    Serial.print(goingForward);
+    Serial.print("   |   lxInputIgnored: "); 
+    Serial.print(lxInputIsIgnored);
+    Serial.println();*/
+    
+    //DEBU LY: 
+    Serial.print("ly: "); 
+    serialPrint(data.ly, 4); 
+    Serial.print("   |   pwm: "); 
+    Serial.print(pwm);
+    Serial.print("   |   isStopped: "); 
+    Serial.print(isStopped);
+    Serial.println();
+  }
 }
+
+void writeMotor(uint8_t pwm, bool direction) {
+  //Safe to never write both pins high at the same time
+  if (direction) {
+    digitalWrite(PIN_BACKWARD, LOW); 
+    digitalWrite(PIN_FORWARD, HIGH);
+  } else {
+    digitalWrite(PIN_FORWARD, LOW); 
+    digitalWrite(PIN_BACKWARD, HIGH);
+  }
+  analogWrite(PIN_PWM, pwm);
+} 
+
+void writeHorn(bool active) {
+  digitalWrite(PIN_HORN, active); 
+}
+
+void writeFrontLights(bool l, bool r, bool t) {
+  digitalWrite(PIN_LIGHT_FL, l);     
+  digitalWrite(PIN_LIGHT_FR, r); 
+  digitalWrite(PIN_LIGHT_FT, t);
+} 
+
+void writeBacklights(bool l, bool r, bool t) {
+  digitalWrite(PIN_LIGHT_BL, l);
+  digitalWrite(PIN_LIGHT_BR, r);
+  digitalWrite(PIN_LIGHT_BT, t);
+}
+
+void writeExteriorLights(bool direction, bool lightsActive, bool rearLightsActive, bool lz1Active) {
+  if (lightsActive) {
+    if (lz1Active) {
+      writeFrontLights(0, 1, 0); 
+      writeBacklights(0, 1, 0); 
+    } else {
+      if (direction) {
+        if (rearLightsActive) {
+          //TODO
+        } else {
+          writeFrontLights(1, 1, 1); 
+          writeBacklights(0, 0, 0); 
+        }
+      } else {
+        if (rearLightsActive) {
+          //TODO 
+        } else {
+          writeFrontLights(0, 0, 0); 
+          writeBacklights(1, 1, 1);
+        }
+      }
+    }
+  } else {
+    writeFrontLights(0, 0, 0); 
+    writeBacklights(0, 0, 0); 
+  }
+}
+
+void writeInteriorLights(bool active) {
+
+} 
+
+//temporary function to print numbers nicely
+void serialPrint(int number, int places) {
+  char buffer[16];
+  // Format-String dynamisch bauen, z.B. "%04d", "%06d", ...
+  char format[8];
+  snprintf(format, sizeof(format), "%%0%dd", places);
+  snprintf(buffer, sizeof(buffer), format, number);
+  Serial.print(buffer);
+}
+
