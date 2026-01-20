@@ -1,9 +1,14 @@
 #include <nRF24L01.h>
 #include <RF24.h>
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h> 
 
 //Debug and Safe Mode
 const bool SAFE_MODE = true; 
 const bool DEBUG = true; 
+
+//Declare Adafruit PWM Driver with Adress 0 
+Adafruit_PWMServoDriver lightDriver = Adafruit_PWMServoDriver(0x40);  
 
 //Default Values
 #define DEFAULT_ANALOG_VALUE 512 
@@ -20,15 +25,19 @@ const bool DEBUG = true;
 
 #define PIN_HORN 1000
 
-#define PIN_LIGHT_FR 5
-#define PIN_LIGHT_FL 6
-#define PIN_LIGHT_FT 7
+#define PIN_LIGHT_FL_W 0
+#define PIN_LIGHT_FL_R 1
+#define PIN_LIGHT_FR_W 2
+#define PIN_LIGHT_FR_R 3
+#define PIN_LIGHT_FT 4
 
-#define PIN_LIGHT_BR 8
-#define PIN_LIGHT_BL 9
-#define PIN_LIGHT_BT 10
+#define PIN_LIGHT_RL_W 5
+#define PIN_LIGHT_RL_R 6
+#define PIN_LIGHT_RR_W 7
+#define PIN_LIGHT_RR_R 8
+#define PIN_LIGHT_RT 9
 
-#define PIN_LIGHT_INTERIOR 
+#define PIN_LIGHT_INTERIOR 10
 
 //Global functions 
 void serialPrint(int number, int places);
@@ -68,34 +77,43 @@ void setup() {
   Serial.println("Setup - Start");  
 
   //Initialize Radio Communication
-  bool init_status = radio.begin();
+  bool radioInitStatus = radio.begin();
   Serial.print("Radio Initialization: ");
-  Serial.println(init_status ? "Success" : "Failed");
+  Serial.println(radioInitStatus ? "Success" : "Failed");
 
   radio.openReadingPipe(0, address);
   radio.setPALevel(RF24_PA_MAX);
   radio.startListening();
 
-  pinMode(PIN_PWM, OUTPUT); 
+  //Set Pin Modes 
+  /*pinMode(PIN_PWM, OUTPUT); 
   pinMode(PIN_FORWARD, OUTPUT); 
   pinMode(PIN_BACKWARD, OUTPUT); 
-
   pinMode(PIN_HORN, OUTPUT); 
+*/
+
+  pinMode(SDA, OUTPUT); 
+  pinMode(SCL, OUTPUT); 
+
+  //Initialize Adafruit PWM Driver 
+  bool adafruitPwmDriverInitStatus = lightDriver.begin();
+  Serial.print("Adafruit PWM Driver Initilitation: "); 
+  Serial.println(adafruitPwmDriverInitStatus ? "Success" : "Failed");
+  lightDriver.setPWMFreq(60); 
   
   Serial.println("Setup - End");
 }
 
 void loop() {
    
- /*  
-  LX: Richtung V> R< 
-  LY: Fahrregler 
-  LZ: Horn 
+   
+  //LX: Richtung V> R< 
+  //LY: Fahrregler 
+  //LZ: Horn 
 
-  RX: Kabinenbeleuchtung  < / FZ1 (1 weiße Leuchte auf Pufferhöhe) > 
-  RY: Umschalten Hecklichter / Licht an/aus 
-  RZ: Hauptschalter?  / Rangierschalter (langsamere V-max)? 
-*/
+  //RX: Kabinenbeleuchtung  < / FZ1 (1 weiße Leuchte auf Pufferhöhe) > 
+  //RY: Umschalten Hecklichter / Licht an/aus 
+  //RZ: Hauptschalter?  / Rangierschalter (langsamere V-max)? 
 
   //Check radio availability, read if available, else stop
   if (radio.available()) {
@@ -148,7 +166,7 @@ void loop() {
   //DEBUG Prints: 
   if (DEBUG) {
     //DEBUG LX: 
-    /*Serial.print("lx: "); 
+    Serial.print("lx: "); 
     serialPrint(data.lx, 4); 
     Serial.print("   |   isStopped: "); 
     Serial.print(isStopped);
@@ -156,7 +174,7 @@ void loop() {
     Serial.print(goingForward);
     Serial.print("   |   lxInputIgnored: "); 
     Serial.print(lxInputIsIgnored);
-    Serial.println();*/
+    Serial.println();
     
     //DEBU LY: 
     Serial.print("ly: "); 
@@ -185,43 +203,21 @@ void writeHorn(bool active) {
   digitalWrite(PIN_HORN, active); 
 }
 
-void writeFrontLights(bool l, bool r, bool t) {
-  digitalWrite(PIN_LIGHT_FL, l);     
-  digitalWrite(PIN_LIGHT_FR, r); 
-  digitalWrite(PIN_LIGHT_FT, t);
-} 
-
-void writeBacklights(bool l, bool r, bool t) {
-  digitalWrite(PIN_LIGHT_BL, l);
-  digitalWrite(PIN_LIGHT_BR, r);
-  digitalWrite(PIN_LIGHT_BT, t);
-}
-
 void writeExteriorLights(bool direction, bool lightsActive, bool rearLightsActive, bool lz1Active) {
   if (lightsActive) {
     if (lz1Active) {
-      writeFrontLights(0, 1, 0); 
-      writeBacklights(0, 1, 0); 
     } else {
       if (direction) {
         if (rearLightsActive) {
-          //TODO
         } else {
-          writeFrontLights(1, 1, 1); 
-          writeBacklights(0, 0, 0); 
         }
       } else {
         if (rearLightsActive) {
-          //TODO 
         } else {
-          writeFrontLights(0, 0, 0); 
-          writeBacklights(1, 1, 1);
         }
       }
     }
   } else {
-    writeFrontLights(0, 0, 0); 
-    writeBacklights(0, 0, 0); 
   }
 }
 
