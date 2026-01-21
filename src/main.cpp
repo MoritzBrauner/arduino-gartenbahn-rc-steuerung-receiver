@@ -56,7 +56,7 @@ Adafruit_PWMServoDriver lightDriver = Adafruit_PWMServoDriver(0x40);
 
 //Global functions 
 void serialPrint(int number, int places);
-void writeMotor(uint8_t ly, bool direction); 
+void writeMotor(uint8_t ly, bool direction, bool lowGearEnabled); 
 void writeHorn(bool active); 
 void writeExteriorLights(bool direction, bool lightsActive, bool rearLightsActive, bool lz1Active);
 void writeInteriorLights(bool active);   
@@ -65,6 +65,8 @@ void writeInteriorLights(bool active);
 bool goingForward = true;
 bool lxInputIsIgnored = false; 
 bool isStopped = true; 
+
+bool hornActive = false; 
 
 bool rxlIsLocked = false; 
 bool interiorLightsActive = false;  
@@ -77,6 +79,8 @@ bool lightsActive = false;
 
 bool rylIsLocked = false; 
 bool rearLightsActive = false; 
+
+bool lowGearEnabled = false; 
 
 //Radio setup 
 RF24 radio(PIN_CE, PIN_CSN); // CE, CSN
@@ -168,7 +172,7 @@ void loop() {
   }
 
   //LZ
-  bool hornActive = data.lz;  
+  hornActive = data.lz;  
 
   //RX - Left Side (>512)
   if (data.rx > 1024 - DEFAULT_STICK_TOLERANCE) {
@@ -211,11 +215,11 @@ void loop() {
   }
 
   //RZ
-  
+  lowGearEnabled = data.rz; 
   
   //Pin Writing - only if Safe Mode is disabled  
   if (!SAFE_MODE) {
-    writeMotor(pwm, goingForward); 
+    writeMotor(pwm, goingForward, lowGearEnabled); 
     writeHorn(hornActive); 
     writeInteriorLights(interiorLightsActive);
     writeExteriorLights(goingForward, lightsActive, rearLightsActive, lz1Active); 
@@ -223,8 +227,8 @@ void loop() {
   
   //DEBUG Prints: 
   if (DEBUG_MODE) {
-    /*//DEBUG LX: 
-    Serial.print("lx: "); 
+    //DEBUG LX: 
+    /*Serial.print("lx: "); 
     serialPrint(data.lx, 4); 
     Serial.print("   |   isStopped: "); 
     Serial.print(isStopped);
@@ -236,7 +240,9 @@ void loop() {
     
     //DEBUG LY: 
     Serial.print("ly: "); 
-    serialPrint(data.ly, 4); 
+    serialPrint(data.ly, 4);
+    Serial.print("   |   low gear: "); 
+    Serial.print(lowGearEnabled); 
     Serial.print("   |   pwm: "); 
     Serial.print(pwm);
     Serial.print("   |   isStopped: "); 
@@ -268,7 +274,7 @@ void writeFrontLightsOff();
 void writePWMDriverPinHigh(uint8_t pinIndex); 
 void writePWMDriverPinLow(uint8_t pinIndex);
 
-void writeMotor(uint8_t pwm, bool direction) {
+void writeMotor(uint8_t pwm, bool direction, bool lowGearEnabled) {
   //Safe to never write both pins high at the same time
   if (direction) {
     digitalWrite(PIN_BACKWARD, LOW); 
@@ -277,6 +283,7 @@ void writeMotor(uint8_t pwm, bool direction) {
     digitalWrite(PIN_FORWARD, LOW); 
     digitalWrite(PIN_BACKWARD, HIGH);
   }
+  if (lowGearEnabled) pwm = pwm / 2; 
   analogWrite(PIN_PWM, pwm);
 } 
 
