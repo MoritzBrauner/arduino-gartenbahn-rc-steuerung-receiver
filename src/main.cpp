@@ -294,7 +294,7 @@ void writeMotor(uint8_t pwm, bool direction, bool lowGearEnabled) {
 } 
 
 void writeHorn(bool active) {
-  digitalWrite(PIN_HORN, active); 
+  digitalWrite(PIN_HORN, active ? HIGH : LOW); 
 }
 
 void writeExteriorLights(bool direction, bool lightsActive, bool rearLightsActive, bool lz1Active) {
