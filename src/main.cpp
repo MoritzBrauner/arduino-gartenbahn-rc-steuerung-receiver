@@ -5,7 +5,7 @@
 
 //Debug and Safe Mode
 const bool SAFE_MODE = true; 
-const bool DEBUG = false; 
+const bool DEBUG_MODE = false; 
 
 //Declare Adafruit PWM Driver with Adress 0 
 Adafruit_PWMServoDriver lightDriver = Adafruit_PWMServoDriver(0x40);  
@@ -13,7 +13,7 @@ Adafruit_PWMServoDriver lightDriver = Adafruit_PWMServoDriver(0x40);
 //Default Values
 #define DEFAULT_ANALOG_VALUE 512 
 #define DEFAULT_DIGITAL_VALUE 0
-#define DEFAULT_STICK_TOLERANCE 50 
+#define DEFAULT_STICK_TOLERANCE 256
 
 //Pin Declarations
 #define PIN_CE 7
@@ -67,6 +67,16 @@ bool lxInputIsIgnored = false;
 bool isStopped = true; 
 
 bool rxlIsLocked = false; 
+bool interiorLightsActive = false;  
+
+bool rxrIsLocked = false; 
+bool lz1Active = false; 
+
+bool ryuIsLocked = false; 
+bool lightsActive = false; 
+
+bool rylIsLocked = false; 
+bool rearLightsActive = false; 
 
 //Radio setup 
 RF24 radio(PIN_CE, PIN_CSN); // CE, CSN
@@ -139,10 +149,10 @@ void loop() {
   }
 
   //Stick and Switch Handling 
+
   //LY
   uint8_t pwm = map(data.ly, 0, 1024, 0, 255);
     
-
   //LX
   isStopped = pwm == 0;
   if (isStopped) {
@@ -157,28 +167,63 @@ void loop() {
     } 
   }
 
-
   //LZ
   bool hornActive = data.lz;  
 
-  //RX 
+  //RX - Left Side (>512)
+  if (data.rx > 1024 - DEFAULT_STICK_TOLERANCE) {
+    if (!rxlIsLocked) {
+      interiorLightsActive = !interiorLightsActive;
+      rxlIsLocked = true; 
+    }
+  } else {
+    rxlIsLocked = false; 
+  }
 
-  //RY
+  //RX - Right Side (<512) 
+  if (data.rx < DEFAULT_STICK_TOLERANCE) {
+    if (!rxrIsLocked) {
+      lz1Active = !lz1Active;
+      rxrIsLocked = true; 
+    }
+  } else {
+    rxrIsLocked = false; 
+  }
+
+  //RY - Lower (<512)
+  if (data.ry < DEFAULT_STICK_TOLERANCE) {
+    if (!rylIsLocked) {
+      rearLightsActive = !rearLightsActive;
+      rylIsLocked = true; 
+    }
+  } else {
+    rylIsLocked = false; 
+  }
+  
+  //RY - Upper (>512)
+  if (data.ry > 1024 - DEFAULT_STICK_TOLERANCE) {
+    if (!ryuIsLocked) {
+      lightsActive = !lightsActive;
+      ryuIsLocked = true; 
+    }
+  } else {
+    ryuIsLocked = false; 
+  }
 
   //RZ
-  bool interiorLightsActive = data.rz; 
-  writeInteriorLights(interiorLightsActive); 
-
-
+  
+  
   //Pin Writing - only if Safe Mode is disabled  
   if (!SAFE_MODE) {
     writeMotor(pwm, goingForward); 
     writeHorn(hornActive); 
+    writeInteriorLights(interiorLightsActive);
+    writeExteriorLights(goingForward, lightsActive, rearLightsActive, lz1Active); 
   }
   
   //DEBUG Prints: 
-  if (DEBUG) {
-    //DEBUG LX: 
+  if (DEBUG_MODE) {
+    /*//DEBUG LX: 
     Serial.print("lx: "); 
     serialPrint(data.lx, 4); 
     Serial.print("   |   isStopped: "); 
@@ -189,7 +234,7 @@ void loop() {
     Serial.print(lxInputIsIgnored);
     Serial.println();
     
-    //DEBU LY: 
+    //DEBUG LY: 
     Serial.print("ly: "); 
     serialPrint(data.ly, 4); 
     Serial.print("   |   pwm: "); 
@@ -197,6 +242,15 @@ void loop() {
     Serial.print("   |   isStopped: "); 
     Serial.print(isStopped);
     Serial.println();
+
+    //DEBUG RX: 
+    Serial.print("rx: "); 
+    serialPrint(data.rx, 4); 
+    Serial.print("   |   rxl is locked: "); 
+    Serial.print(rxlIsLocked);
+    Serial.print("   |   interior light active: "); 
+    Serial.print(interiorLightsActive);
+    Serial.println();*/
   }
 }
 
@@ -266,8 +320,6 @@ void writeExteriorLights(bool direction, bool lightsActive, bool rearLightsActiv
 }
 
 void writeInteriorLights(bool active) {
-  Serial.print("Interior: ");
-  Serial.println(active);
   active ? writePWMDriverPinHigh(PIN_LIGHT_INTERIOR) : writePWMDriverPinLow(PIN_LIGHT_INTERIOR); 
 } 
 
