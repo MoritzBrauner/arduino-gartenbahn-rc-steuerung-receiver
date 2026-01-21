@@ -98,7 +98,9 @@ struct Data_Package {
 };
 Data_Package data; 
 
-
+/*-----------------------------------------------------------------------------------------------------------
+SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP
+-----------------------------------------------------------------------------------------------------------*/
 
 void setup() {
   Serial.begin(9600);
@@ -130,6 +132,10 @@ void setup() {
   
   Serial.println("Setup - End");
 }
+
+/*----------------------------------------------------------------------------------------------------
+LOOP - LOOP - LOOP - LOOP - LOOP - LOOP - LOOP - LOOP - LOOP - LOOP - LOOP - LOOP - LOOP - LOOP - LOOP 
+----------------------------------------------------------------------------------------------------*/
 
 void loop() {
   //LX: Richtung V> R< 
