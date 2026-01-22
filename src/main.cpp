@@ -181,44 +181,16 @@ void loop() {
   hornActive = data.lz;  
 
   //RX - Left Side (>512)
-  if (data.rx > 1024 - DEFAULT_STICK_TOLERANCE) {
-    if (!rxlIsLocked) {
-      interiorLightsActive = !interiorLightsActive;
-      rxlIsLocked = true; 
-    }
-  } else {
-    rxlIsLocked = false; 
-  }
+  handleUpperStickInput_512_1024(data.rx, rxlIsLocked, interiorLightsActive); 
 
   //RX - Right Side (<512) 
-  if (data.rx < DEFAULT_STICK_TOLERANCE) {
-    if (!rxrIsLocked) {
-      lz1Active = !lz1Active;
-      rxrIsLocked = true; 
-    }
-  } else {
-    rxrIsLocked = false; 
-  }
+  handleLowerStickInput_0_512(data.rx, rxrIsLocked, lz1Active); 
 
   //RY - Lower (<512)
-  if (data.ry < DEFAULT_STICK_TOLERANCE) {
-    if (!rylIsLocked) {
-      rearLightsActive = !rearLightsActive;
-      rylIsLocked = true; 
-    }
-  } else {
-    rylIsLocked = false; 
-  }
+  handleLowerStickInput_0_512(data.ry, rylIsLocked, rearLightsActive); 
   
   //RY - Upper (>512)
-  if (data.ry > 1024 - DEFAULT_STICK_TOLERANCE) {
-    if (!ryuIsLocked) {
-      lightsActive = !lightsActive;
-      ryuIsLocked = true; 
-    }
-  } else {
-    ryuIsLocked = false; 
-  }
+  handleUpperStickInput_512_1024(data.ry, ryuIsLocked, lightsActive);
 
   //RZ
   lowGearEnabled = data.rz; 
@@ -350,6 +322,29 @@ void serialPrint(int number, int places) {
 /*-------------------------------------------------------------------------------------------------------------
 HELPER FUNCTIONS - HELPER FUNCTIONS - HELPER FUNCTIONS - HELPER FUNCTIONS - HELPER FUNCTIONS - HELPER FUNCTIONS
 -------------------------------------------------------------------------------------------------------------*/
+
+void handleLowerStickInput_0_512(int &data, bool &lockVar, bool &outPut) {
+  if (data < DEFAULT_STICK_TOLERANCE) {
+    if (!lockVar) {
+      outPut = !outPut;
+      lockVar = true; 
+    }
+  } else {
+    lockVar = false; 
+  }
+}
+
+void handleUpperStickInput_512_1024(int &data, bool &lockVar, bool &outPut) {
+  if (data > 1024 - DEFAULT_STICK_TOLERANCE) {
+    if (!lockVar) {
+      outPut = !outPut;
+      lockVar = true; 
+    }
+  } else {
+    lockVar = false; 
+  }
+}
+
 void writePWMDriverPinHigh(uint8_t pinIndex) {
   lightDriver.setPWM(pinIndex, 4096, 0); 
 }
