@@ -5,7 +5,7 @@
 
 //Debug and Safe Mode
 const bool SAFE_MODE = true; 
-const bool DEBUG_MODE = false; 
+const bool DEBUG_MODE = true; 
 
 //Declare Adafruit PWM Driver with Adress 0 
 Adafruit_PWMServoDriver lightDriver = Adafruit_PWMServoDriver(0x40);  
@@ -59,7 +59,13 @@ void serialPrint(int number, int places);
 void writeMotor(uint8_t ly, bool direction, bool lowGearEnabled); 
 void writeHorn(bool active); 
 void writeExteriorLights(bool direction, bool lightsActive, bool rearLightsActive, bool lz1Active);
-void writeInteriorLights(bool active);   
+void writeInteriorLights(bool active);
+void handleUpperStickInput_512_1024(int &data, bool &lockVar, bool &outPut); 
+void handleLowerStickInput_0_512(int &data, bool &lockVar, bool &outPut); 
+
+//Put unter loop() later
+void writePWMDriverPinHigh(uint8_t pinIndex); 
+void writePWMDriverPinLow(uint8_t pinIndex);
 
 //Global Variables 
 bool goingForward = true;
@@ -128,6 +134,9 @@ void setup() {
   bool adafruitPwmDriverInitStatus = lightDriver.begin();
   Serial.print("Adafruit PWM Driver Initilitation: "); 
   Serial.println(adafruitPwmDriverInitStatus ? "Success" : "Failed");
+  Serial.print("SAFE MODE ");
+  Serial.println(SAFE_MODE ? "enabled, all Pin-Interactions disabled" : "disabled, Pin-Interactions enabled"); 
+
   lightDriver.setPWMFreq(60); 
   
   Serial.println("Setup - End");
@@ -181,7 +190,7 @@ void loop() {
   hornActive = data.lz;  
 
   //RX - Left Side (>512)
-  handleUpperStickInput_512_1024(data.rx, rxlIsLocked, interiorLightsActive); 
+  handleUpperStickInput_512_1024(data.rx, rxlIsLocked, interiorLightsActive);
 
   //RX - Right Side (<512) 
   handleLowerStickInput_0_512(data.rx, rxrIsLocked, lz1Active); 
@@ -191,6 +200,14 @@ void loop() {
   
   //RY - Upper (>512)
   handleUpperStickInput_512_1024(data.ry, ryuIsLocked, lightsActive);
+  if (lightsActive) {
+    writePWMDriverPinLow(14); 
+    writePWMDriverPinHigh(15); 
+  } else {
+    writePWMDriverPinLow(15); 
+    writePWMDriverPinHigh(14); 
+  }
+
 
   //RZ
   lowGearEnabled = data.rz; 
@@ -226,7 +243,7 @@ void loop() {
     Serial.print("   |   isStopped: "); 
     Serial.print(isStopped);
     Serial.println();
-
+*/
     //DEBUG RX: 
     Serial.print("rx: "); 
     serialPrint(data.rx, 4); 
@@ -234,7 +251,7 @@ void loop() {
     Serial.print(rxlIsLocked);
     Serial.print("   |   interior light active: "); 
     Serial.print(interiorLightsActive);
-    Serial.println();*/
+    Serial.println();
   }
 }
 
@@ -249,8 +266,7 @@ void writeRearLightsOff();
 void writeRearLightsWhite();
 void writeFrontLightsRed(); 
 void writeFrontLightsOff(); 
-void writePWMDriverPinHigh(uint8_t pinIndex); 
-void writePWMDriverPinLow(uint8_t pinIndex);
+
 
 void writeMotor(uint8_t pwm, bool direction, bool lowGearEnabled) {
   //Safe to never write both pins high at the same time
