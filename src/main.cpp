@@ -285,7 +285,6 @@ void serialPrint(int number, int places) {
   Serial.print(buffer);
 }
 
-
 /*-------------------------------------------------------------------------------------------------------------
 HELPER FUNCTIONS - HELPER FUNCTIONS - HELPER FUNCTIONS - HELPER FUNCTIONS - HELPER FUNCTIONS - HELPER FUNCTIONS
 -------------------------------------------------------------------------------------------------------------*/
