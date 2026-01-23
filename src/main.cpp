@@ -1,14 +1,9 @@
 #include <nRF24L01.h>
 #include <RF24.h>
-#include <Wire.h>
-#include <Adafruit_PWMServoDriver.h> 
 
 //Debug and Safe Mode
 const bool SAFE_MODE = true; 
 const bool DEBUG_MODE = true; 
-
-//Declare Adafruit PWM Driver with Adress 0 
-Adafruit_PWMServoDriver lightDriver = Adafruit_PWMServoDriver(0x40);  
 
 //Default Values
 #define DEFAULT_ANALOG_VALUE 512 
@@ -16,10 +11,6 @@ Adafruit_PWMServoDriver lightDriver = Adafruit_PWMServoDriver(0x40);
 #define DEFAULT_STICK_TOLERANCE 256
 
 //Pin Declarations
- 
-//#define PIN_CE 7
-//#define PIN_CSN 8
-
 #define PIN_CE 9
 #define PIN_CSN 10
 
@@ -27,21 +18,7 @@ Adafruit_PWMServoDriver lightDriver = Adafruit_PWMServoDriver(0x40);
 #define PIN_FORWARD 7
 #define PIN_BACKWARD 8
 
-
 #define PIN_HORN 1000
-
-//All Following Pins on Pin Extension 
-//#define PIN_LIGHT_FL_EN 1
-//#define PIN_LIGHT_FL_W  2
-//#define PIN_LIGHT_FR_EN 3
-//#define PIN_LIGHT_FR_W  4
-//#define PIN_LIGHT_FT    5
-//
-//#define PIN_LIGHT_RL_EN 6
-//#define PIN_LIGHT_RL_W  7
-//#define PIN_LIGHT_RR_EN 8
-//#define PIN_LIGHT_RR_W  9 
-//#define PIN_LIGHT_RT    10
 
 #define PIN_LIGHT_FL_A 5
 #define PIN_LIGHT_FL_B 4
@@ -57,32 +34,8 @@ Adafruit_PWMServoDriver lightDriver = Adafruit_PWMServoDriver(0x40);
 
 #define PIN_LIGHT_INTERIOR 0
 
-/*
-#define PIN_LIGHT_FL_W 0
-#define PIN_LIGHT_FL_R 1
-#define PIN_LIGHT_FR_W 2
-#define PIN_LIGHT_FR_R 3
-#define PIN_LIGHT_FT 4
-
-#define PIN_LIGHT_RL_W 5
-#define PIN_LIGHT_RL_R 6
-#define PIN_LIGHT_RR_W 7
-#define PIN_LIGHT_RR_R 8
-#define PIN_LIGHT_RT 9
-*/
-
 //Global functions 
 void serialPrint(int number, int places);
-void writeMotor(uint8_t ly, bool direction, bool lowGearEnabled); 
-void writeHorn(bool active); 
-void writeExteriorLights(bool direction, bool lightsActive, bool rearLightsActive, bool lz1Active);
-void writeInteriorLights(bool active);
-void handleUpperStickInput_512_1024(int &data, bool &lockVar, bool &outPut); 
-void handleLowerStickInput_0_512(int &data, bool &lockVar, bool &outPut); 
-
-//Put unter loop() later
-void writePWMDriverPinHigh(uint8_t pinIndex); 
-void writePWMDriverPinLow(uint8_t pinIndex);
 
 //Global Variables 
 bool goingForward = true;
@@ -127,7 +80,7 @@ SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - 
 
 void setup() {
   //Serial.begin(9600);
-  Serial.println("Program: RC Receiver");
+  Serial.println("Program: RC Receiver ESP32");
   Serial.println("Setup - Start");  
 
   //Initialize Radio Communication
@@ -140,18 +93,9 @@ void setup() {
   radio.startListening();
 
   //Set Pin Modes 
-  pinMode(PIN_PWM, OUTPUT); 
-  pinMode(PIN_FORWARD, OUTPUT); 
-  pinMode(PIN_BACKWARD, OUTPUT); 
 
-  //Initialize Adafruit PWM Driver 
-  bool adafruitPwmDriverInitStatus = lightDriver.begin();
-  Serial.print("Adafruit PWM Driver Initilitation: "); 
-  Serial.println(adafruitPwmDriverInitStatus ? "Success" : "Failed");
   Serial.print("SAFE MODE ");
   Serial.println(SAFE_MODE ? "enabled, all Pin-Interactions disabled" : "disabled, Pin-Interactions enabled"); 
-
-  lightDriver.setPWMFreq(60); 
   
   Serial.println("Setup - End");
 }
@@ -204,34 +148,22 @@ void loop() {
   hornActive = data.lz;  
 
   //RX - Left Side (>512)
-  handleUpperStickInput_512_1024(data.rx, rxlIsLocked, interiorLightsActive);
 
   //RX - Right Side (<512) 
-  handleLowerStickInput_0_512(data.rx, rxrIsLocked, lz1Active); 
 
   //RY - Lower (<512)
-  handleLowerStickInput_0_512(data.ry, rylIsLocked, rearLightsActive); 
   
   //RY - Upper (>512)
-  handleUpperStickInput_512_1024(data.rx, ryuIsLocked, lightsActive);
-  if (lightsActive) {
-    digitalWrite(1, HIGH);
-    //Serial.println("4 HIGH"); 
-  } else {
-    digitalWrite(1, LOW); 
-    //Serial.println("5 HIGH");
-  }
-
 
   //RZ
   lowGearEnabled = data.rz; 
   
   //Pin Writing - only if Safe Mode is disabled  
   if (!SAFE_MODE) {
-    writeMotor(pwm, goingForward, lowGearEnabled); 
-    writeHorn(hornActive); 
-    writeInteriorLights(interiorLightsActive);
-    writeExteriorLights(goingForward, lightsActive, rearLightsActive, lz1Active); 
+   // writeMotor(pwm, goingForward, lowGearEnabled); 
+   // writeHorn(hornActive); 
+   // writeInteriorLights(interiorLightsActive);
+   // writeExteriorLights(goingForward, lightsActive, rearLightsActive, lz1Active); 
   }
   
   //DEBUG Prints: 
@@ -343,10 +275,6 @@ void writeExteriorLights(bool direction, bool lightsActive, bool rearLightsActiv
   }
 }
 
-void writeInteriorLights(bool active) {
-  active ? writePWMDriverPinHigh(PIN_LIGHT_INTERIOR) : writePWMDriverPinLow(PIN_LIGHT_INTERIOR); 
-} 
-
 //temporary function to print numbers nicely
 void serialPrint(int number, int places) {
   char buffer[16];
@@ -383,46 +311,3 @@ void handleUpperStickInput_512_1024(int &data, bool &lockVar, bool &outPut) {
     lockVar = false; 
   }
 }
-
-void writePWMDriverPinHigh(uint8_t pinIndex) {
-  lightDriver.setPWM(pinIndex, 4096, 0); 
-}
-
-void writePWMDriverPinLow(uint8_t pinIndex) {
-  lightDriver.setPWM(pinIndex, 0, 4096); 
-}
-
-void writeLights(bool fle, bool flw, bool fre, bool frw, bool ft, bool rle, bool rlw, bool rre, bool rrw, bool rt);
-
-void writeFrontLightsWhiteAndRearRed() {
-
-}
-
-void writeFrontLightsOff() {
-
-}
-
-void writeRearLightsWhite() {
-
-}
-
-void writeRearLightsRed() {
-
-}
-
-void writeRearLightsOff() {
-
-}
-
-void writeLz1() {
-
-}
-
-void writePWMDriverPin(uint8_t pinIndex, bool on) {
-  if (on) {
-    writePWMDriverPinHigh(pinIndex); 
-  } else {
-    writePWMDriverPinLow(pinIndex); 
-  }
-}  
-
