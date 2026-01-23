@@ -16,29 +16,46 @@ Adafruit_PWMServoDriver lightDriver = Adafruit_PWMServoDriver(0x40);
 #define DEFAULT_STICK_TOLERANCE 256
 
 //Pin Declarations
-#define PIN_CE 7
-#define PIN_CSN 8
+ 
+//#define PIN_CE 7
+//#define PIN_CSN 8
 
-#define PIN_FORWARD 2
-#define PIN_BACKWARD 4
-#define PIN_PWM 3 
+#define PIN_CE 9
+#define PIN_CSN 10
+
+#define PIN_PWM 6
+#define PIN_FORWARD 7
+#define PIN_BACKWARD 8
+
 
 #define PIN_HORN 1000
 
 //All Following Pins on Pin Extension 
-#define PIN_LIGHT_FL_EN 1
-#define PIN_LIGHT_FL_W  2
-#define PIN_LIGHT_FR_EN 3
-#define PIN_LIGHT_FR_W  4
-#define PIN_LIGHT_FT    5
+//#define PIN_LIGHT_FL_EN 1
+//#define PIN_LIGHT_FL_W  2
+//#define PIN_LIGHT_FR_EN 3
+//#define PIN_LIGHT_FR_W  4
+//#define PIN_LIGHT_FT    5
+//
+//#define PIN_LIGHT_RL_EN 6
+//#define PIN_LIGHT_RL_W  7
+//#define PIN_LIGHT_RR_EN 8
+//#define PIN_LIGHT_RR_W  9 
+//#define PIN_LIGHT_RT    10
 
-#define PIN_LIGHT_RL_EN 6
-#define PIN_LIGHT_RL_W  7
-#define PIN_LIGHT_RR_EN 8
-#define PIN_LIGHT_RR_W  9 
-#define PIN_LIGHT_RT    10
+#define PIN_LIGHT_FL_A 5
+#define PIN_LIGHT_FL_B 4
+#define PIN_LIGHT_FR_A 3
+#define PIN_LIGHT_FR_B 2 
+#define PIN_LIGHT_FT 1
 
-#define PIN_LIGHT_INTERIOR 11 
+#define PIN_LIGHT_RL_A  
+#define PIN_LIGHT_RL_B  
+#define PIN_LIGHT_RR_A 
+#define PIN_LIGHT_RR_B  
+#define PIN_LIGHT_RT 
+
+#define PIN_LIGHT_INTERIOR 0
 
 /*
 #define PIN_LIGHT_FL_W 0
@@ -109,7 +126,7 @@ SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - SETUP - 
 -----------------------------------------------------------------------------------------------------------*/
 
 void setup() {
-  Serial.begin(9600);
+  //Serial.begin(9600);
   Serial.println("Program: RC Receiver");
   Serial.println("Setup - Start");  
 
@@ -126,9 +143,6 @@ void setup() {
   pinMode(PIN_PWM, OUTPUT); 
   pinMode(PIN_FORWARD, OUTPUT); 
   pinMode(PIN_BACKWARD, OUTPUT); 
-  
-  pinMode(PIN_LIGHT_INTERIOR, OUTPUT); 
-  //pinMode(PIN_HORN, OUTPUT); 
 
   //Initialize Adafruit PWM Driver 
   bool adafruitPwmDriverInitStatus = lightDriver.begin();
@@ -199,13 +213,13 @@ void loop() {
   handleLowerStickInput_0_512(data.ry, rylIsLocked, rearLightsActive); 
   
   //RY - Upper (>512)
-  handleUpperStickInput_512_1024(data.ry, ryuIsLocked, lightsActive);
+  handleUpperStickInput_512_1024(data.rx, ryuIsLocked, lightsActive);
   if (lightsActive) {
-    writePWMDriverPinLow(14); 
-    writePWMDriverPinHigh(15); 
+    digitalWrite(1, HIGH);
+    //Serial.println("4 HIGH"); 
   } else {
-    writePWMDriverPinLow(15); 
-    writePWMDriverPinHigh(14); 
+    digitalWrite(1, LOW); 
+    //Serial.println("5 HIGH");
   }
 
 
@@ -243,7 +257,7 @@ void loop() {
     Serial.print("   |   isStopped: "); 
     Serial.print(isStopped);
     Serial.println();
-*/
+
     //DEBUG RX: 
     Serial.print("rx: "); 
     serialPrint(data.rx, 4); 
@@ -251,6 +265,15 @@ void loop() {
     Serial.print(rxlIsLocked);
     Serial.print("   |   interior light active: "); 
     Serial.print(interiorLightsActive);
+    Serial.println();*/
+
+    //DEBU RY: 
+    Serial.print("rx: "); 
+    serialPrint(data.rx, 4); 
+    Serial.print("   |   ryu is locked: "); 
+    Serial.print(ryuIsLocked);
+    Serial.print("   |   light active: "); 
+    Serial.print(lightsActive);
     Serial.println();
   }
 }
@@ -260,7 +283,7 @@ PIN WRITING - PIN WRITING - PIN WRITING - PIN WRITING - PIN WRITING - PIN WRITIN
 -----------------------------------------------------------------------------------------------------------*/
 
 void writeLz1(); 
-void writeFrontLightsWhite();
+void writeFrontLightsWhiteAndRearRed();
 void writeRearLightsRed(); 
 void writeRearLightsOff();
 void writeRearLightsWhite();
@@ -293,7 +316,7 @@ void writeExteriorLights(bool direction, bool lightsActive, bool rearLightsActiv
     } else {
       if (direction) {
         //write front lights white
-        writeFrontLightsWhite(); 
+        writeFrontLightsWhiteAndRearRed(); 
         if (rearLightsActive) {
           //write rear lights red
           writeRearLightsRed();
@@ -369,62 +392,37 @@ void writePWMDriverPinLow(uint8_t pinIndex) {
   lightDriver.setPWM(pinIndex, 0, 4096); 
 }
 
-void writeFrontLightsWhite() {
-  writePWMDriverPinHigh(PIN_LIGHT_FL_EN); 
-  writePWMDriverPinHigh(PIN_LIGHT_FL_W); 
+void writeLights(bool fle, bool flw, bool fre, bool frw, bool ft, bool rle, bool rlw, bool rre, bool rrw, bool rt);
 
-  writePWMDriverPinHigh(PIN_LIGHT_FR_EN); 
-  writePWMDriverPinHigh(PIN_LIGHT_FR_W);
-  
-  writePWMDriverPinHigh(PIN_LIGHT_FT);
-}
+void writeFrontLightsWhiteAndRearRed() {
 
-void writeFrontLightsRed() {
-  writePWMDriverPinHigh(PIN_LIGHT_FL_EN);  
-
-  writePWMDriverPinHigh(PIN_LIGHT_FR_EN); 
 }
 
 void writeFrontLightsOff() {
-  writePWMDriverPinLow(PIN_LIGHT_FL_EN); 
-  writePWMDriverPinLow(PIN_LIGHT_FL_W); 
 
-  writePWMDriverPinLow(PIN_LIGHT_FR_EN); 
-  writePWMDriverPinLow(PIN_LIGHT_FR_W);
-  
-  writePWMDriverPinLow(PIN_LIGHT_FT);
 }
 
 void writeRearLightsWhite() {
-  writePWMDriverPinHigh(PIN_LIGHT_RL_EN); 
-  writePWMDriverPinHigh(PIN_LIGHT_RL_W); 
 
-  writePWMDriverPinHigh(PIN_LIGHT_RR_EN); 
-  writePWMDriverPinHigh(PIN_LIGHT_RR_W);
-  
-  writePWMDriverPinHigh(PIN_LIGHT_RT);
 }
 
 void writeRearLightsRed() {
-  writePWMDriverPinHigh(PIN_LIGHT_RL_EN);  
 
-  writePWMDriverPinHigh(PIN_LIGHT_RR_EN); 
 }
 
 void writeRearLightsOff() {
-  writePWMDriverPinLow(PIN_LIGHT_RL_EN); 
-  writePWMDriverPinLow(PIN_LIGHT_RL_W); 
 
-  writePWMDriverPinLow(PIN_LIGHT_RR_EN); 
-  writePWMDriverPinLow(PIN_LIGHT_RR_W);
-  
-  writePWMDriverPinLow(PIN_LIGHT_RT);
 }
 
 void writeLz1() {
-  writePWMDriverPinHigh(PIN_LIGHT_FR_EN);
-  writePWMDriverPinHigh(PIN_LIGHT_FR_W);
 
-  writePWMDriverPinHigh(PIN_LIGHT_RR_EN);
-  writePWMDriverPinHigh(PIN_LIGHT_RR_W);
 }
+
+void writePWMDriverPin(uint8_t pinIndex, bool on) {
+  if (on) {
+    writePWMDriverPinHigh(pinIndex); 
+  } else {
+    writePWMDriverPinLow(pinIndex); 
+  }
+}  
+
